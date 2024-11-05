@@ -1,3 +1,8 @@
+# Next
+- Only target assistant messages
+- Only run if a new message appears (bit laggy atm)
+- Add a popup with a neat switch
+
 # Chrome Extension Boilerplate with Manifest 3
 This is a basic boilerplate for creating a Chrome Extension with Manifest 3. It includes the necessary files and folder structure to get started quickly.
 

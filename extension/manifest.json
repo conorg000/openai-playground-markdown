@@ -23,9 +23,9 @@
   },
   "content_scripts": [
     {
-      "js": ["./content.js"],
-      "matches": ["*://google.com/*"],
-      "run_at": "document_end"
+      "js": ["content.js"],
+      "matches": ["https://platform.openai.com/playground/*"],
+      "run_at": "document_start"
     }
   ]
 }
