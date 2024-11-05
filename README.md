@@ -1,6 +1,7 @@
 # Next
 - Only target assistant messages
-- Only run if a new message appears (bit laggy atm)
+- Only run once a new message is complete (bit laggy atm)
+- If assistant message clicked, convert back to markdown (using turndown)
 - Add a popup with a neat switch
 
 # Chrome Extension Boilerplate with Manifest 3
