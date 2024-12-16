@@ -2602,21 +2602,17 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var marked__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! marked */ "./node_modules/marked/lib/marked.esm.js");
 
 var target_div = ".GCWeG";
-var DEBOUNCE_DELAY = 500; // Adjust the delay as needed based on content streaming behavior
+var DEBOUNCE_DELAY = 700; // Adjust the delay as needed based on content streaming behavior
 
 // Function to convert Markdown and apply it to the element
 function convertMarkdownToHTML(element) {
   var markdownContent = element.innerText || element.textContent;
 
-  // Check and remove ```markdown code fences at the start and end
+  // Remove ```markdown code fences at the start and end if present
   if (markdownContent.startsWith('```markdown')) {
-    // Remove the starting ```markdown and any following newline
     markdownContent = markdownContent.replace(/^```markdown\s*\n?/, '');
-    // Remove the ending ```
     markdownContent = markdownContent.replace(/\n?```$/, '');
   }
-
-  // Now parse the cleaned markdown content
   var htmlContent = (0,marked__WEBPACK_IMPORTED_MODULE_0__.marked)(markdownContent);
 
   // Replace the element's inner HTML with generated HTML
@@ -2627,6 +2623,12 @@ function convertMarkdownToHTML(element) {
   var preElements = element.querySelectorAll('pre');
   preElements.forEach(function (pre) {
     pre.style.fontSize = '0.8rem'; // Adjust the font-size style if necessary
+  });
+
+  // **New code to adjust <code> elements**
+  var codeElements = element.querySelectorAll('code');
+  codeElements.forEach(function (codeElem) {
+    codeElem.style.width = '-webkit-fill-available'; // Apply the desired CSS style
   });
 }
 

@@ -1,20 +1,17 @@
 import { marked } from 'marked';
 const target_div = ".GCWeG";
-const DEBOUNCE_DELAY = 500; // Adjust the delay as needed based on content streaming behavior
+const DEBOUNCE_DELAY = 700; // Adjust the delay as needed based on content streaming behavior
 
 // Function to convert Markdown and apply it to the element
 function convertMarkdownToHTML(element) {
     let markdownContent = element.innerText || element.textContent;
 
-    // Check and remove ```markdown code fences at the start and end
+    // Remove ```markdown code fences at the start and end if present
     if (markdownContent.startsWith('```markdown')) {
-        // Remove the starting ```markdown and any following newline
         markdownContent = markdownContent.replace(/^```markdown\s*\n?/, '');
-        // Remove the ending ```
         markdownContent = markdownContent.replace(/\n?```$/, '');
     }
 
-    // Now parse the cleaned markdown content
     const htmlContent = marked(markdownContent);
 
     // Replace the element's inner HTML with generated HTML
@@ -25,6 +22,12 @@ function convertMarkdownToHTML(element) {
     const preElements = element.querySelectorAll('pre');
     preElements.forEach(pre => {
         pre.style.fontSize = '0.8rem';  // Adjust the font-size style if necessary
+    });
+
+    // **New code to adjust <code> elements**
+    const codeElements = element.querySelectorAll('code');
+    codeElements.forEach(codeElem => {
+        codeElem.style.width = '-webkit-fill-available'; // Apply the desired CSS style
     });
 }
 
