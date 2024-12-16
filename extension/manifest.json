@@ -4,20 +4,20 @@
   "description": "Convert Markdown to pretty HTML in the OpenAI Playground",
   "version": "1.0",
   "icons": {
-    "16": "icons/markdown.png",
-    "32": "icons/markdown.png",
-    "48": "icons/markdown.png",
-    "128": "icons/markdown.png"
+    "16": "icons/markdown_small.png",
+    "32": "icons/markdown_small.png",
+    "48": "icons/markdown_small.png",
+    "128": "icons/markdown_small.png"
   },
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_icon": {
-      "16": "icons/markdown.png",
-      "32": "icons/markdown.png",
-      "48": "icons/markdown.png",
-      "128": "icons/markdown.png"
+      "16": "icons/markdown_small.png",
+      "32": "icons/markdown_small.png",
+      "48": "icons/markdown_small.png",
+      "128": "icons/markdown_small.png"
     },
     "permissions": ["tabs", "activeTab", "scripting"]
   },
