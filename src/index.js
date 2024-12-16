@@ -4,16 +4,27 @@ const DEBOUNCE_DELAY = 500; // Adjust the delay as needed based on content strea
 
 // Function to convert Markdown and apply it to the element
 function convertMarkdownToHTML(element) {
-    const markdownContent = element.innerText || element.textContent;
+    let markdownContent = element.innerText || element.textContent;
+
+    // Check and remove ```markdown code fences at the start and end
+    if (markdownContent.startsWith('```markdown')) {
+        // Remove the starting ```markdown and any following newline
+        markdownContent = markdownContent.replace(/^```markdown\s*\n?/, '');
+        // Remove the ending ```
+        markdownContent = markdownContent.replace(/\n?```$/, '');
+    }
+
+    // Now parse the cleaned markdown content
     const htmlContent = marked(markdownContent);
 
     // Replace the element's inner HTML with generated HTML
     element.innerHTML = htmlContent;
     console.log('Converted Markdown to HTML');
 
+    // Adjust pre elements if needed
     const preElements = element.querySelectorAll('pre');
     preElements.forEach(pre => {
-        pre.style.fontSize = '0.8rem';  // Adjust the font-size style
+        pre.style.fontSize = '0.8rem';  // Adjust the font-size style if necessary
     });
 }
 
@@ -49,7 +60,6 @@ function monitorStreamingContent(element) {
     });
 }
 
-// **NEW FUNCTION**: Check if the element has a sibling with class 'v9phc' and text content 'assistant'
 function hasAssistantSibling(element) {
     const parent = element.parentElement;
     if (parent) {

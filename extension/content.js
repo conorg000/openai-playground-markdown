@@ -2607,14 +2607,26 @@ var DEBOUNCE_DELAY = 500; // Adjust the delay as needed based on content streami
 // Function to convert Markdown and apply it to the element
 function convertMarkdownToHTML(element) {
   var markdownContent = element.innerText || element.textContent;
+
+  // Check and remove ```markdown code fences at the start and end
+  if (markdownContent.startsWith('```markdown')) {
+    // Remove the starting ```markdown and any following newline
+    markdownContent = markdownContent.replace(/^```markdown\s*\n?/, '');
+    // Remove the ending ```
+    markdownContent = markdownContent.replace(/\n?```$/, '');
+  }
+
+  // Now parse the cleaned markdown content
   var htmlContent = (0,marked__WEBPACK_IMPORTED_MODULE_0__.marked)(markdownContent);
 
   // Replace the element's inner HTML with generated HTML
   element.innerHTML = htmlContent;
   console.log('Converted Markdown to HTML');
+
+  // Adjust pre elements if needed
   var preElements = element.querySelectorAll('pre');
   preElements.forEach(function (pre) {
-    pre.style.fontSize = '0.8rem'; // Adjust the font-size style
+    pre.style.fontSize = '0.8rem'; // Adjust the font-size style if necessary
   });
 }
 
@@ -2649,8 +2661,6 @@ function monitorStreamingContent(element) {
     subtree: true
   });
 }
-
-// **NEW FUNCTION**: Check if the element has a sibling with class 'v9phc' and text content 'assistant'
 function hasAssistantSibling(element) {
   var parent = element.parentElement;
   if (parent) {
