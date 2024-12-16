@@ -5,11 +5,78 @@ const DEBOUNCE_DELAY = 700; // Adjust the delay as needed based on content strea
 // Array to keep track of processed elements
 const processedElements = [];
 
+// **Global toggle state**
+let isParsingToggledOff = false; // false indicates parsing is toggled on (parsed markdown is shown)
+
+// Function to convert Markdown and apply it to the parsedDiv
+function updateParsedMarkdown(element) {
+    let markdownContent = element.innerText || element.textContent;
+
+    // Remove ```markdown code fences at the start and end if present
+    if (markdownContent.startsWith('```markdown')) {
+        markdownContent = markdownContent.replace(/^```markdown\s*\n?/, '');
+        markdownContent = markdownContent.replace(/\n?```$/, '');
+    }
+
+    const htmlContent = marked(markdownContent);
+
+    // Update the parsedDiv's content
+    if (element.__parsedDiv) {
+        element.__parsedDiv.innerHTML = htmlContent;
+
+        // Adjust pre elements inside parsedDiv
+        const preElements = element.__parsedDiv.querySelectorAll('pre');
+        preElements.forEach(pre => {
+            pre.style.fontSize = '0.8rem';
+        });
+
+        // Adjust code elements inside parsedDiv
+        const codeElements = element.__parsedDiv.querySelectorAll('code');
+        codeElements.forEach(codeElem => {
+            codeElem.style.width = '-webkit-fill-available';
+        });
+    }
+}
+
+// Function to handle edits to the original element
+function monitorOriginalElementForChanges(element) {
+    // If an observer already exists, disconnect it
+    if (element.__editObserver) {
+        element.__editObserver.disconnect();
+    }
+
+    // Create a MutationObserver to detect changes in the element's text content
+    const observer = new MutationObserver(mutationsList => {
+        // Use a debounce mechanism to avoid rapid reprocessing
+        clearTimeout(element.__editDebounceTimer);
+        element.__editDebounceTimer = setTimeout(() => {
+            console.log('Detected changes in original element. Updating parsed markdown.');
+            updateParsedMarkdown(element);
+        }, 300); // Adjust debounce delay as needed
+    });
+
+    // Start observing the element for character data changes
+    observer.observe(element, {
+        characterData: true,
+        subtree: true,
+        childList: true,
+    });
+
+    // Store the observer on the element for later disconnection
+    element.__editObserver = observer;
+}
+
 // Function to convert Markdown and apply it to the element
 function convertMarkdownToHTML(element) {
-    // Store the original innerHTML if not already stored
-    if (!element.__originalInnerHTML) {
-        element.__originalInnerHTML = element.innerHTML;
+    // Check if we've already processed this element
+    if (element.__processed) {
+        return;
+    }
+    element.__processed = true;
+
+    // Store the original element (reference)
+    if (!element.__originalElement) {
+        element.__originalElement = element; // Reference to the original element
     }
 
     let markdownContent = element.innerText || element.textContent;
@@ -22,32 +89,50 @@ function convertMarkdownToHTML(element) {
 
     const htmlContent = marked(markdownContent);
 
-    // Store the parsed HTML content
-    element.__markdownParsedHTML = htmlContent;
+    // Create a new div to hold the parsed content
+    const parsedDiv = document.createElement('div');
+    parsedDiv.className = 'parsed-markdown';
+    parsedDiv.innerHTML = htmlContent;
 
-    // Replace the element's inner HTML with generated HTML
-    element.innerHTML = htmlContent;
-    console.log('Converted Markdown to HTML');
-
-    // Adjust pre elements if needed
-    const preElements = element.querySelectorAll('pre');
+    // Adjust pre elements inside parsedDiv
+    const preElements = parsedDiv.querySelectorAll('pre');
     preElements.forEach(pre => {
-        pre.style.fontSize = '0.8rem';  // Adjust the font-size style if necessary
+        pre.style.fontSize = '0.8rem';
     });
 
-    // Adjust <code> elements
-    const codeElements = element.querySelectorAll('code');
+    // Adjust code elements inside parsedDiv
+    const codeElements = parsedDiv.querySelectorAll('code');
     codeElements.forEach(codeElem => {
-        codeElem.style.width = '-webkit-fill-available'; // Apply the desired CSS style
+        codeElem.style.width = '-webkit-fill-available';
     });
 
-    // Keep track of the processed element
+    // **Set initial visibility based on the global toggle state**
+    if (isParsingToggledOff) {
+        // Parsing is toggled off globally; show original, hide parsed markdown
+        element.style.display = '';
+        parsedDiv.style.display = 'none';
+
+        // Start monitoring for changes
+        monitorOriginalElementForChanges(element);
+    } else {
+        // Parsing is toggled on globally; show parsed markdown, hide original
+        element.style.display = 'none';
+        parsedDiv.style.display = '';
+    }
+
+    // Insert parsedDiv into the DOM after the original element
+    element.parentNode.insertBefore(parsedDiv, element.nextSibling);
+
+    // Store the parsedDiv in element.__parsedDiv
+    element.__parsedDiv = parsedDiv;
+
+    // Keep track of the element
     if (!processedElements.includes(element)) {
         processedElements.push(element);
     }
 
-    // Initialize the toggle state
-    element.__isMarkdownToggled = false; // false indicates showing parsed markdown
+    // Initialize the toggle state based on the global state
+    element.__isMarkdownToggled = isParsingToggledOff; // true if parsing is toggled off
 }
 
 // Function to monitor a target div until its streaming content is fully loaded
@@ -78,7 +163,7 @@ function monitorStreamingContent(element) {
     contentObserver.observe(element, {
         childList: true,
         characterData: true,
-        subtree: true
+        subtree: true,
     });
 }
 
@@ -148,7 +233,7 @@ function setupMainObserver() {
     if (body) {
         mainObserver.observe(body, {
             childList: true,
-            subtree: true // Monitor additions/removals in the entire subtree
+            subtree: true, // Monitor additions/removals in the entire subtree
         });
 
         // Initial scan for target divs already present in the DOM
@@ -159,19 +244,37 @@ function setupMainObserver() {
     }
 }
 
-// **Add a message listener to handle toggle requests**
+// Add a message listener to handle toggle requests
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "toggleMarkdown") {
+        // **Update the global toggle state**
+        isParsingToggledOff = !isParsingToggledOff; // Flip the global toggle state
+
         // Toggle the content of all processed elements
         processedElements.forEach(element => {
-            if (element.__isMarkdownToggled) {
-                // Revert to parsed markdown HTML
-                element.innerHTML = element.__markdownParsedHTML;
-                element.__isMarkdownToggled = false;
-            } else {
-                // Revert to original HTML
-                element.innerHTML = element.__originalInnerHTML;
+            if (isParsingToggledOff) {
+                // Parsing is toggled off globally; show original element, hide parsed markdown
+                element.style.display = '';
+                if (element.__parsedDiv) {
+                    element.__parsedDiv.style.display = 'none';
+                }
                 element.__isMarkdownToggled = true;
+
+                // Start monitoring the original element for changes
+                monitorOriginalElementForChanges(element);
+            } else {
+                // Parsing is toggled on globally; show parsed markdown, hide original element
+                element.style.display = 'none';
+                if (element.__parsedDiv) {
+                    element.__parsedDiv.style.display = '';
+                }
+                element.__isMarkdownToggled = false;
+
+                // Disconnect the observer on the original element to prevent unnecessary processing
+                if (element.__editObserver) {
+                    element.__editObserver.disconnect();
+                    element.__editObserver = null;
+                }
             }
         });
         sendResponse({ status: "toggled" });
