@@ -2604,8 +2604,15 @@ __webpack_require__.r(__webpack_exports__);
 var target_div = ".GCWeG";
 var DEBOUNCE_DELAY = 700; // Adjust the delay as needed based on content streaming behavior
 
+// Array to keep track of processed elements
+var processedElements = [];
+
 // Function to convert Markdown and apply it to the element
 function convertMarkdownToHTML(element) {
+  // Store the original innerHTML if not already stored
+  if (!element.__originalInnerHTML) {
+    element.__originalInnerHTML = element.innerHTML;
+  }
   var markdownContent = element.innerText || element.textContent;
 
   // Remove ```markdown code fences at the start and end if present
@@ -2614,6 +2621,9 @@ function convertMarkdownToHTML(element) {
     markdownContent = markdownContent.replace(/\n?```$/, '');
   }
   var htmlContent = (0,marked__WEBPACK_IMPORTED_MODULE_0__.marked)(markdownContent);
+
+  // Store the parsed HTML content
+  element.__markdownParsedHTML = htmlContent;
 
   // Replace the element's inner HTML with generated HTML
   element.innerHTML = htmlContent;
@@ -2625,11 +2635,19 @@ function convertMarkdownToHTML(element) {
     pre.style.fontSize = '0.8rem'; // Adjust the font-size style if necessary
   });
 
-  // **New code to adjust <code> elements**
+  // Adjust <code> elements
   var codeElements = element.querySelectorAll('code');
   codeElements.forEach(function (codeElem) {
     codeElem.style.width = '-webkit-fill-available'; // Apply the desired CSS style
   });
+
+  // Keep track of the processed element
+  if (!processedElements.includes(element)) {
+    processedElements.push(element);
+  }
+
+  // Initialize the toggle state
+  element.__isMarkdownToggled = false; // false indicates showing parsed markdown
 }
 
 // Function to monitor a target div until its streaming content is fully loaded
@@ -2682,7 +2700,7 @@ function handleNewTargetDivs(elements) {
   elements.forEach(function (element) {
     if (!element.__monitoringStarted) {
       // Avoid setting up multiple observers for the same element
-      // **Check if the element meets the new condition**
+      // Check if the element meets the new condition
       if (hasAssistantSibling(element)) {
         element.__monitoringStarted = true;
         console.log('Found a new target div with matching sibling. Starting to monitor content:', element);
@@ -2732,15 +2750,35 @@ function setupMainObserver() {
 
     // Initial scan for target divs already present in the DOM
     var initialTargetDivs = document.querySelectorAll(target_div);
-    handleNewTargetDivs(initialTargetDivs);
+    handleNewTargetDivs(Array.from(initialTargetDivs));
   } else {
     console.error('Document body not found. Observer cannot be set up.');
   }
 }
 
+// **Add a message listener to handle toggle requests**
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+  if (request.action === "toggleMarkdown") {
+    // Toggle the content of all processed elements
+    processedElements.forEach(function (element) {
+      if (element.__isMarkdownToggled) {
+        // Revert to parsed markdown HTML
+        element.innerHTML = element.__markdownParsedHTML;
+        element.__isMarkdownToggled = false;
+      } else {
+        // Revert to original HTML
+        element.innerHTML = element.__originalInnerHTML;
+        element.__isMarkdownToggled = true;
+      }
+    });
+    sendResponse({
+      status: "toggled"
+    });
+  }
+});
+
 // Initialize the extension once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function () {
-  document.body.style.backgroundColor = "#ffffff";
   console.log('Extension initialized, setting up observers.');
   setupMainObserver();
 });
