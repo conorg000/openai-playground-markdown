@@ -1,6 +1,6 @@
 import { marked } from 'marked';
 const target_div = ".GCWeG";
-const DEBOUNCE_DELAY = 500; // Adjust this delay as needed
+const DEBOUNCE_DELAY = 500; // Adjust the delay as needed based on content streaming behavior
 
 // Function to convert Markdown and apply it to the element
 function convertMarkdownToHTML(element) {
@@ -13,34 +13,35 @@ function convertMarkdownToHTML(element) {
 
     const preElements = element.querySelectorAll('pre');
     preElements.forEach(pre => {
-        pre.style.fontSize = '0.8rem';  // Add the font-size style
+        pre.style.fontSize = '0.8rem';  // Adjust the font-size style
     });
 }
 
-// Function to monitor a target div until its content is fully loaded
-function monitorDivContent(element) {
+// Function to monitor a target div until its streaming content is fully loaded
+function monitorStreamingContent(element) {
     let debounceTimer;
 
-    // Callback function for the child MutationObserver
+    // Callback function for the MutationObserver monitoring the element's content
     const contentObserverCallback = (mutationsList, observer) => {
-        // Clear the existing timer whenever a mutation occurs
+        // Whenever a mutation occurs, reset the debounce timer
         clearTimeout(debounceTimer);
 
-        // Set a new timer
+        // Set a new debounce timer
         debounceTimer = setTimeout(() => {
-            // Stop observing once content is considered fully loaded
-            observer.disconnect();
-            console.log(`Content fully loaded for element:`, element);
+            // Content has stopped changing for DEBOUNCE_DELAY milliseconds
+            // We can now process the markdown
+            observer.disconnect(); // Stop observing the element's content
+            console.log('Content fully loaded, processing markdown for:', element);
 
-            // Process the markdown content
+            // Convert the markdown content to HTML
             convertMarkdownToHTML(element);
-        }, DEBOUNCE_DELAY); // Wait for DEBOUNCE_DELAY milliseconds of inactivity
+        }, DEBOUNCE_DELAY);
     };
 
-    // Create a new MutationObserver for the element's content
+    // Create a MutationObserver to monitor content changes within the element
     const contentObserver = new MutationObserver(contentObserverCallback);
 
-    // Start observing the element for childList and characterData changes
+    // Start observing the element for character data changes and child node additions/removals
     contentObserver.observe(element, {
         childList: true,
         characterData: true,
@@ -48,59 +49,87 @@ function monitorDivContent(element) {
     });
 }
 
-// Define the function to perform actions on target elements
-function handleTargetDivs(elements) {
-    elements.forEach(element => {
-        if (!element.__processed) { // Avoid duplicate processing
-            element.__processed = true;
-            console.log("Monitoring a new div with class 'GCWeG':", element);
+// **NEW FUNCTION**: Check if the element has a sibling with class 'v9phc' and text content 'assistant'
+function hasAssistantSibling(element) {
+    const parent = element.parentElement;
+    if (parent) {
+        const siblings = Array.from(parent.children);
+        for (const sibling of siblings) {
+            if (
+                sibling !== element &&
+                sibling.classList.contains('v9phc') &&
+                sibling.textContent.trim() === 'assistant'
+            ) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
-            // Monitor the element's content until it's fully loaded
-            monitorDivContent(element);
+// Handle new target divs by setting up a content monitor for each
+function handleNewTargetDivs(elements) {
+    elements.forEach(element => {
+        if (!element.__monitoringStarted) { // Avoid setting up multiple observers for the same element
+            // **Check if the element meets the new condition**
+            if (hasAssistantSibling(element)) {
+                element.__monitoringStarted = true;
+                console.log('Found a new target div with matching sibling. Starting to monitor content:', element);
+
+                // Start monitoring the element's content until it's fully loaded
+                monitorStreamingContent(element);
+            } else {
+                console.log('Div does not have the required sibling, skipping:', element);
+            }
         }
     });
 }
 
-// Set up the observer once the document body is ready
-function setupObserver() {
-    const observer = new MutationObserver(mutationsList => {
+// Set up the main observer to detect new target divs added to the DOM
+function setupMainObserver() {
+    const mainObserver = new MutationObserver(mutationsList => {
         mutationsList.forEach(mutation => {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(node => {
                     // Only process element nodes
                     if (node.nodeType === Node.ELEMENT_NODE) {
                         let targetElements = [];
+
                         // Check if the node itself matches the target selector
                         if (node.matches && node.matches(target_div)) {
                             targetElements.push(node);
                         }
+
                         // Check for any descendants that match the target selector
                         targetElements = targetElements.concat(Array.from(node.querySelectorAll(target_div)));
-                        handleTargetDivs(targetElements);
+
+                        // Handle the new target divs
+                        handleNewTargetDivs(targetElements);
                     }
                 });
             }
         });
     });
 
-    // Observe the body for added nodes
+    // Observe the body for added nodes in the subtree
     const body = document.body;
     if (body) {
-        observer.observe(body, {
+        mainObserver.observe(body, {
             childList: true,
-            subtree: true // Monitor the entire subtree under the body
+            subtree: true // Monitor additions/removals in the entire subtree
         });
 
-        // Initial scan for elements already on the page
+        // Initial scan for target divs already present in the DOM
         const initialTargetDivs = document.querySelectorAll(target_div);
-        handleTargetDivs(initialTargetDivs);
+        handleNewTargetDivs(initialTargetDivs);
     } else {
         console.error('Document body not found. Observer cannot be set up.');
     }
 }
 
+// Initialize the extension once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     document.body.style.backgroundColor = "#ffffff";
-    console.log('if u see this, good');
-    setupObserver();
+    console.log('Extension initialized, setting up observers.');
+    setupMainObserver();
 });
